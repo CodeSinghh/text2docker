@@ -1,135 +1,50 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Text2Docker — Automated Dockerfile Generator</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <style>
-    body {
-      background: radial-gradient(circle at 20% 20%, #1e1b4b 0%, #0f172a 50%, #020617 100%);
-      min-height: 100vh;
-      color: #f8fafc;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    }
-    .glass-card {
-      background: rgba(255, 255, 255, 0.03);
-      backdrop-filter: blur(20px);
-      -webkit-backdrop-filter: blur(20px);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      box-shadow: 0 30px 60px rgba(0, 0, 0, 0.4);
-    }
-    .glass-input {
-      background: rgba(255, 255, 255, 0.05);
-      border: 1px solid rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(10px);
-      color: #f8fafc;
-    }
-    .glass-input:focus {
-      outline: none;
-      border-color: rgba(99, 102, 241, 0.6);
-      box-shadow: 0 0 15px rgba(99, 102, 241, 0.3);
-    }
-  </style>
-</head>
-<body class="flex flex-col items-center justify-center p-6">
-  
-  <header class="text-center mb-10">
-    <h1 class="text-4xl font-extrabold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-indigo-400 via-purple-300 to-pink-400">
-      Text2Docker
-    </h1>
-    <p class="text-slate-400 text-sm mt-2">Instant production-ready Dockerfiles for Python applications.</p>
-  </header>
+<script>
+  const form = document.getElementById('dockerForm');
+  const output = document.getElementById('output');
+  const copyBtn = document.getElementById('copyBtn');
 
-  <main class="w-full max-w-4xl grid grid-cols-1 md:grid-cols-2 gap-8">
-    
-    <!-- Controls Form -->
-    <div class="glass-card p-6 rounded-2xl flex flex-col justify-between">
-      <form id="dockerForm" class="space-y-4">
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Python Image Version</label>
-          <input type="text" id="python_version" value="3.11-slim" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="e.g. 3.12-alpine">
-        </div>
+  async function fetchDockerfile() {
+    output.textContent = "Generating...";
 
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Working Directory</label>
-          <input type="text" id="workdir" value="/app" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="/app">
-        </div>
+    const payload = {
+      python_version: document.getElementById('python_version').value,
+      workdir: document.getElementById('workdir').value,
+      start_command: document.getElementById('start_command').value,
+      exposed_port: document.getElementById('exposed_port').value,
+      has_requirements: document.getElementById('has_requirements').checked
+    };
 
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Start Command</label>
-          <input type="text" id="start_command" value="python app.py" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="e.g. uvicorn main:app --host 0.0.0.0">
-        </div>
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
 
-        <div>
-          <label class="block text-xs font-semibold uppercase tracking-wider text-slate-300 mb-1">Expose Port (Optional)</label>
-          <input type="text" id="exposed_port" value="8000" class="glass-input w-full px-4 py-2.5 rounded-xl text-sm" placeholder="8000">
-        </div>
-
-        <div class="flex items-center space-x-3 pt-2">
-          <input type="checkbox" id="has_requirements" checked class="w-4 h-4 rounded bg-slate-800 border-slate-600 text-indigo-500 focus:ring-0">
-          <label for="has_requirements" class="text-sm text-slate-300">Include requirements.txt layer</label>
-        </div>
-
-        <button type="submit" class="w-full mt-4 py-3 px-4 bg-gradient-to-r from-indigo-500 to-purple-600 hover:from-indigo-600 hover:to-purple-700 text-white font-semibold rounded-xl shadow-lg transition duration-200">
-          Generate Dockerfile
-        </button>
-      </form>
-    </div>
-
-    <!-- Output Preview -->
-    <div class="glass-card p-6 rounded-2xl flex flex-col justify-between relative">
-      <div>
-        <div class="flex justify-between items-center mb-3">
-          <span class="text-xs font-semibold uppercase tracking-wider text-slate-400">Output Dockerfile</span>
-          <button id="copyBtn" class="text-xs px-3 py-1.5 rounded-lg glass-input hover:bg-white/10 transition">Copy</button>
-        </div>
-        <pre id="output" class="bg-slate-950/60 p-4 rounded-xl text-indigo-300 font-mono text-sm overflow-x-auto min-h-[220px] border border-white/5">Generating...</pre>
-      </div>
-    </div>
-
-  </main>
-
-  <script>
-    const form = document.getElementById('dockerForm');
-    const output = document.getElementById('output');
-    const copyBtn = document.getElementById('copyBtn');
-
-    async function fetchDockerfile() {
-      const payload = {
-        python_version: document.getElementById('python_version').value,
-        workdir: document.getElementById('workdir').value,
-        start_command: document.getElementById('start_command').value,
-        exposed_port: document.getElementById('exposed_port').value,
-        has_requirements: document.getElementById('has_requirements').checked
-      };
-
-      try {
-        const res = await fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-        const data = await res.json();
-        output.textContent = data.dockerfile;
-      } catch (err) {
-        output.textContent = "Error generating Dockerfile.";
+      if (!res.ok) {
+        const errData = await res.text();
+        output.textContent = `Server Error (${res.status}):\n${errData}`;
+        return;
       }
+
+      const data = await res.json();
+      output.textContent = data.dockerfile || "No Dockerfile generated.";
+    } catch (err) {
+      output.textContent = `Network Error:\n${err.message}\n\nNote: If testing locally, run FastAPI with uvicorn instead of opening index.html directly.`;
     }
+  }
 
-    form.addEventListener('submit', (e) => {
-      e.preventDefault();
-      fetchDockerfile();
-    });
-
-    copyBtn.addEventListener('click', () => {
-      navigator.clipboard.writeText(output.textContent);
-      copyBtn.textContent = "Copied!";
-      setTimeout(() => copyBtn.textContent = "Copy", 2000);
-    });
-
-    // Initial load
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
     fetchDockerfile();
-  </script>
-</body>
-</html>
+  });
+
+  copyBtn.addEventListener('click', () => {
+    navigator.clipboard.writeText(output.textContent);
+    copyBtn.textContent = "Copied!";
+    setTimeout(() => copyBtn.textContent = "Copy", 2000);
+  });
+
+  // Fetch initial preview on page load
+  fetchDockerfile();
+</script>
