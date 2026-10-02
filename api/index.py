@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 
 app = FastAPI(title="Text2Docker")
@@ -10,8 +10,7 @@ class DockerfileRequest(BaseModel):
     start_command: str = "python app.py"
     exposed_port: str = ""
 
-@app.post("/api/generate")
-def generate_dockerfile(req: DockerfileRequest):
+def build_dockerfile(req: DockerfileRequest) -> str:
     lines = [
         f"FROM python:{req.python_version.strip()}",
         f"WORKDIR {req.workdir.strip()}",
@@ -40,4 +39,13 @@ def generate_dockerfile(req: DockerfileRequest):
     cmd_formatted = ", ".join(f'"{part}"' for part in cmd_parts)
     lines.append(f"CMD [{cmd_formatted}]")
 
-    return {"dockerfile": "\n".join(lines)}
+    return "\n".join(lines)
+
+# Handle both /api/generate and /generate paths
+@app.post("/api/generate")
+@app.post("/generate")
+def generate_dockerfile(req: DockerfileRequest):
+    try:
+        return {"dockerfile": build_dockerfile(req)}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
